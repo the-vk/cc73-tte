@@ -31,27 +31,25 @@ func main() {
 	in = os.Stdin
 	out = os.Stdout
 	oldState, err := term.MakeRaw(int(in.Fd()))
-	if err != nil {
-		fmt.Println("failed to make raw:", err)
-		os.Exit(1)
-	}
+	check(err)
 	defer term.Restore(int(out.Fd()), oldState)
 
-	if err := clear(); err != nil {
-		fmt.Println("failed to clear:", err)
-		os.Exit(1)
-	}
-
 	for {
-		if err := printTextBuffer(); err != nil {
-			os.Exit(1)
-		}
+		check(clear())
+		check(printTextBuffer())
 
 		n, err := in.Read(inbuf)
 		if err != nil {
 			break
 		}
 		os.Stdout.Write([]byte(fmt.Sprintf("input (%d): %s\n", n, string(inbuf))))
+	}
+}
+
+func check(e error) {
+	if e != nil {
+		os.Stderr.WriteString(e.Error())
+		os.Exit(1)
 	}
 }
 

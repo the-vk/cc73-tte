@@ -24,6 +24,11 @@ const (
 	CMD_LEFT  = byte('h')
 )
 
+const (
+	MODE_CONTROL = iota
+	MODE_INSERT
+)
+
 var (
 	in     *os.File
 	out    *os.File
@@ -32,6 +37,8 @@ var (
 
 	line = 1
 	col  = 1
+
+	mode = MODE_CONTROL
 )
 
 func main() {
@@ -44,6 +51,7 @@ func main() {
 	for {
 		check(clear())
 		check(printTextBuffer())
+		check(printStatus())
 
 		moveCursor(line, col)
 		check(flush())
@@ -99,11 +107,33 @@ func printTextBuffer() error {
 	if err != nil {
 		return err
 	}
-	for i := 1; i <= h; i++ {
+	for i := 1; i <= h-1; i++ {
 		moveCursor(i, 1)
 		outbuf.WriteString("~")
 	}
 	return flush()
+}
+
+func printStatus() error {
+	cur_l, cur_col := line, col
+	_, h, err := size()
+	if err != nil {
+		return err
+	}
+	moveCursor(h, 1)
+	outbuf.WriteString(fmt.Sprintf("mode: %s -- %d:%d", formatMode(), cur_l, cur_col))
+	line, col = cur_l, cur_col
+	return nil
+}
+
+func formatMode() string {
+	switch mode {
+	case MODE_CONTROL:
+		return "control"
+	case MODE_INSERT:
+		return "insert"
+	}
+	return ""
 }
 
 func clear() error {

@@ -22,6 +22,12 @@ const (
 	CMD_RIGHT = byte('l')
 	CMD_DOWN  = byte('j')
 	CMD_LEFT  = byte('h')
+
+	CMD_MODE_INSERT = byte('i')
+)
+
+const (
+	KEY_ESC = 0x1b
 )
 
 const (
@@ -39,6 +45,8 @@ var (
 	col  = 1
 
 	mode = MODE_CONTROL
+
+	textbuf = make([]string, 0)
 )
 
 func main() {
@@ -73,6 +81,20 @@ func check(e error) {
 }
 
 func dispatchInput(buf []byte) error {
+	_, _, err := size()
+	if err != nil {
+		return err
+	}
+	switch mode {
+	case MODE_CONTROL:
+		return dispatchControl(buf)
+	case MODE_INSERT:
+		return dispatchInsert(buf)
+	}
+	return nil
+}
+
+func dispatchControl(buf []byte) error {
 	w, h, err := size()
 	if err != nil {
 		return err
@@ -86,6 +108,16 @@ func dispatchInput(buf []byte) error {
 		col = max(1, col-1)
 	case CMD_RIGHT:
 		col = min(w, col+1)
+	case CMD_MODE_INSERT:
+		mode = MODE_INSERT
+	}
+	return nil
+}
+
+func dispatchInsert(buf []byte) error {
+	switch buf[0] {
+	case KEY_ESC:
+		mode = MODE_CONTROL
 	}
 	return nil
 }

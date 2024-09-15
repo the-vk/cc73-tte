@@ -17,6 +17,13 @@ const (
 	CSI_CURSOR_POSIION                    = CSI + "%d;%dH"
 )
 
+const (
+	CMD_UP    = byte('k')
+	CMD_RIGHT = byte('l')
+	CMD_DOWN  = byte('j')
+	CMD_LEFT  = byte('h')
+)
+
 var (
 	in     *os.File
 	out    *os.File
@@ -38,11 +45,15 @@ func main() {
 		check(clear())
 		check(printTextBuffer())
 
+		moveCursor(line, col)
+		check(flush())
+
 		n, err := in.Read(inbuf)
-		if err != nil {
-			break
-		}
-		os.Stdout.Write([]byte(fmt.Sprintf("input (%d): %s\n", n, string(inbuf))))
+		check(err)
+
+		check(dispatchInput(inbuf[:n]))
+
+		check(flush())
 	}
 }
 
@@ -51,6 +62,24 @@ func check(e error) {
 		os.Stderr.WriteString(e.Error())
 		os.Exit(1)
 	}
+}
+
+func dispatchInput(buf []byte) error {
+	w, h, err := size()
+	if err != nil {
+		return err
+	}
+	switch buf[0] {
+	case CMD_UP:
+		line = max(1, line-1)
+	case CMD_DOWN:
+		line = min(h, line+1)
+	case CMD_LEFT:
+		col = max(1, col-1)
+	case CMD_RIGHT:
+		col = min(w, col+1)
+	}
+	return nil
 }
 
 func size() (int, int, error) {

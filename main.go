@@ -82,24 +82,25 @@ func check(e error) {
 }
 
 func dispatchInput(buf []byte) error {
-	_, _, err := size()
+	w, h, err := size()
 	if err != nil {
 		return err
 	}
 	switch mode {
 	case MODE_CONTROL:
-		return dispatchControl(buf)
+		err = dispatchControl(buf)
 	case MODE_INSERT:
-		return dispatchInsert(buf)
+		err = dispatchInsert(buf)
 	}
+	if err != nil {
+		return err
+	}
+	line = clamp(line, 1, min(h, len(textbuf)))
+	col = clamp(col, 1, min(w, len(textbuf[line-1])+1))
 	return nil
 }
 
 func dispatchControl(buf []byte) error {
-	w, h, err := size()
-	if err != nil {
-		return err
-	}
 	switch buf[0] {
 	case CMD_UP:
 		line -= 1
@@ -112,8 +113,6 @@ func dispatchControl(buf []byte) error {
 	case CMD_MODE_INSERT:
 		mode = MODE_INSERT
 	}
-	line = clamp(line, 1, min(h, len(textbuf)))
-	col = clamp(col, 1, min(w, len(textbuf[line-1])+1))
 	return nil
 }
 
@@ -121,8 +120,15 @@ func dispatchInsert(buf []byte) error {
 	switch buf[0] {
 	case KEY_ESC:
 		mode = MODE_CONTROL
+	default:
+		textbuf[line-1] = insert(textbuf[line-1], col-1, string(buf))
+		col += len(buf)
 	}
 	return nil
+}
+
+func insert(s string, i int, t string) string {
+	return s[:i] + t + s[i:]
 }
 
 func size() (int, int, error) {

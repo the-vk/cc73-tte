@@ -14,6 +14,7 @@ const (
 	CSI_ERASE_DISPLAY_CURSOR_TO_END       = CSI + "0J"
 	CSI_ERASE_DISPLAY_CURSOR_TO_BEGGINING = CSI + "1J"
 	CSI_ERASE_DISPLAY                     = CSI + "2J"
+	CSI_ERASE_LINE_CURSOR_TO_END          = CSI + "0K"
 	CSI_CURSOR_POSIION                    = CSI + "%d;%dH"
 )
 
@@ -46,7 +47,7 @@ var (
 
 	mode = MODE_CONTROL
 
-	textbuf = make([]string, 0)
+	textbuf = []string{"", "hello", "world"}
 )
 
 func main() {
@@ -101,16 +102,18 @@ func dispatchControl(buf []byte) error {
 	}
 	switch buf[0] {
 	case CMD_UP:
-		line = max(1, line-1)
+		line -= 1
 	case CMD_DOWN:
-		line = min(h, line+1)
+		line += 1
 	case CMD_LEFT:
-		col = max(1, col-1)
+		col -= 1
 	case CMD_RIGHT:
-		col = min(w, col+1)
+		col += 1
 	case CMD_MODE_INSERT:
 		mode = MODE_INSERT
 	}
+	line = clamp(line, 1, min(h, len(textbuf)))
+	col = clamp(col, 1, min(w, len(textbuf[line-1])+1))
 	return nil
 }
 
@@ -139,7 +142,14 @@ func printTextBuffer() error {
 	if err != nil {
 		return err
 	}
-	for i := 1; i <= h-1; i++ {
+	l, c := 1, 1
+	for _, line := range textbuf {
+		moveCursor(l, c)
+		outbuf.WriteString(CSI_ERASE_LINE_CURSOR_TO_END)
+		outbuf.WriteString(line)
+		l++
+	}
+	for i := l; i <= h-1; i++ {
 		moveCursor(i, 1)
 		outbuf.WriteString("~")
 	}
